@@ -37,7 +37,7 @@ Pillow (PIL) pro základní manipulaci s obrázky.
 NumPy a OpenCV pro rychlé a efektivní zpracování obrazu.
 PyVista pro robustní generování, optimalizaci a ukládání 3D meshe.
 
-nstalace a Spuštění
+Instalace a Spuštění
 Naklonuj repozitář:
 
 Bash
