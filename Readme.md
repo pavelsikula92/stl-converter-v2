@@ -71,6 +71,55 @@ V záložkách "Adjustments" a "Masking Tools" uprav obrázek do požadované po
 V záložce "File & Model" nastav cílové rozměry modelu a pokročilé exportní volby.
 Klikni na "Convert to STL" a vyber, kam se má finální soubor uložit.
 
+Doporučené Postupy a Příklady Použití
+Kombinací pokročilých voleb můžete dosáhnout různých typů modelů. Zde jsou nejčastější scénáře:
+
+1. Standardní 3D Reliéf (jako mince nebo plaketa)
+Cíl: Pevný 3D objekt s hladkým reliéfem a rovnou zadní stranou.
+
+Generate Flat Bottom: Zapnuto
+
+Artistic Smoothing: Zapnuto (Síla Strength podle potřeby, např. 50-75)
+
+Invert Height (light is high): Vypnuto (výchozí stav, tmavá je vysoká)
+
+Výsledek: Toto je nejběžnější použití. Flat Bottom zajistí pevnou podstavu. Artistic Smoothing vytvoří kvalitní, hladký povrch se zachováním hran, podobně jako komerční nástroje.
+
+2. Vytvoření Formy (negativ)
+Cíl: Vytvořit model, který může sloužit jako forma pro odlévání.
+
+Generate Flat Bottom: Zapnuto
+
+Invert Height (light is high): Zapnuto
+
+Mirror output: Zapnuto (většinou doporučeno)
+
+Artistic Smoothing: Zapnuto
+
+Výsledek: Klíčem je Invert Height, které z "vystouplého" udělá "prohloubený" model. Mirror output je potřeba, aby výsledný odlitek nebyl zrcadlově obrácený.
+
+3. Reliéf s Rámečkem / Podstavcem
+Cíl: Reliéf umístěný na podstavě, která ho mírně přesahuje.
+
+Generate Flat Bottom: Zapnuto
+
+Add Cutting Margin: Zapnuto
+
+Artistic Smoothing: Zapnuto
+
+Výsledek: Kombinace Flat Bottom a Cutting Margin vytvoří model, kde podstava přesahuje reliéf o 1 mm na každé straně. Ideální pro vytvoření čistého okraje nebo pro další opracování.
+
+4. Rychlý "Pixelovaný" Náhled
+Cíl: Okamžité vygenerování modelu bez pokročilého vyhlazování.
+
+Artistic Smoothing: Vypnuto
+
+Gaussian Smoothing: 0
+
+Noise Reduction: 0
+
+Výsledek: Vypnutím všech vyhlazovacích filtrů získáte "surový", doslovný převod pixelů na výšku. Generování je bleskové, ale výsledek je vizuálně "zubatý". Hodí se pro rychlé testy.
+
 
 
 
@@ -150,3 +199,53 @@ After launching, click "Load Image" and select an image file.
 In the "Adjustments" and "Masking Tools" tabs, edit the image to your desired appearance. The preview will update in real-time.
 In the "File & Model" tab, set the target dimensions for your model and configure the advanced export options.
 Click "Convert to STL" and choose where to save the final file.
+
+Recommended Workflows and Usage Examples
+
+By combining the advanced options, you can achieve different types of models. Here are the most common scenarios:
+
+1. Standard 3D Relief (like a coin or plaque)
+Goal: A solid 3D object with a smooth relief and a flat back.
+
+Generate Flat Bottom: Enabled
+
+Artistic Smoothing: Enabled (set Strength as needed, e.g., 50-75)
+
+Invert Height (light is high): Disabled (default state, dark is high)
+
+Result: This is the most common use case. Flat Bottom ensures a solid base. Artistic Smoothing creates a high-quality, smooth surface while preserving edges, similar to commercial tools.
+
+2. Creating a Mold (Negative)
+Goal: Create a model that can be used as a mold for casting.
+
+Generate Flat Bottom: Enabled
+
+Invert Height (light is high): Enabled
+
+Mirror output: Enabled (usually recommended)
+
+Artistic Smoothing: Enabled
+
+Result: The key is Invert Height, which turns a "raised" model into a "recessed" one. Mirror output is often needed so that the final cast is not a mirror image.
+
+3. Relief with a Frame / Pedestal
+Goal: A relief placed on a base that is slightly larger than the relief itself.
+
+Generate Flat Bottom: Enabled
+
+Add Cutting Margin: Enabled
+
+Artistic Smoothing: Enabled
+
+Result: The combination of Flat Bottom and Add Cutting Margin creates a model where the base extends beyond the relief by 1mm on each side. Ideal for creating a clean border or for further processing.
+
+4. Quick "Pixelated" Preview
+Goal: Instantly generate a model without advanced smoothing.
+
+Artistic Smoothing: Disabled
+
+Gaussian Smoothing: 0
+
+Noise Reduction: 0
+
+Result: By disabling all smoothing filters, you get a "raw," literal translation of pixels to height. The generation is lightning-fast, but the result is visually "jagged." This is useful for quick tests.

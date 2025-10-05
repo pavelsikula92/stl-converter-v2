@@ -7,6 +7,8 @@ from PIL import Image, ImageOps
 # Hlavní funkce pro konverzi obrázku na STL.
 # Vstupem je zpracovaný PIL obrázek a slovník s parametry.
 # Výstupem je buď True (úspěch), nebo objekt výjimky (chyba).
+
+
 def image_to_stl(processed_pil_image, stl_path, params, progress_callback):
     """
     Konvertuje zpracovaný obrázek na optimalizovaný STL soubor pomocí PyVista.
