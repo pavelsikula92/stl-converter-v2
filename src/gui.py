@@ -1,6 +1,6 @@
 # src/gui.py
 
-# --- Standardtní Importy ---
+# --- Standartní importy ---
 import threading
 import os
 import math
@@ -11,19 +11,19 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk, ImageOps, ImageDraw
 
-# --- Moduly aplikace ---
+# --- Vlastní moduly ---
 from processing import process_image
 from stl_generator import image_to_stl
 
 
+# --- 1. KONSTRUKTOR A INICIALIZACE (__init__) ---
+# Konstruktor třídy. Inicializuje hlavní okno a volá metody pro nastavení.
+
+
 class ReliefApp(tk.Tk):
-
-    # --- 1. KONSTRUKTOR A INICIALIZACE (__init__) ---
-    # Hlavní vstupní bod třídy. Deleguje zodpovědnost na specializované metody.
-
     def __init__(self):
         super().__init__()
-        self.title("Image to STL Converter v2.0")
+        self.title("Image to STL Converter v3.0")
         self.geometry("1200x800")
         self.minsize(800, 600)
 
@@ -32,8 +32,8 @@ class ReliefApp(tk.Tk):
         self._bind_events()
 
     # --- 2. SPRÁVA STAVU (_initialize_variables) ---
-    # Definuje na jednom místě všechny proměnné, které si aplikace "pamatuje".
-    # Speciální Tkinter proměnné (StringVar, DoubleVar), které jsou obousměrně propojeny s widgety (posuvníky, checkboxy).
+    # Inicializuje všechny proměnné instance a speciální Tkinter proměnné.
+    # Tyto proměnné udržují aktuální stav aplikace (hodnoty posuvníků, cesty k souborům atd.).
 
     def _initialize_variables(self):
         """Inicializuje všechny stavové a Tkinter proměnné."""
@@ -70,12 +70,14 @@ class ReliefApp(tk.Tk):
         self.invert_polygon_var = tk.BooleanVar(value=False)
         self.use_cutting_margin_var = tk.BooleanVar(value=False)
         self.export_relief_only_var = tk.BooleanVar(value=False)
-        self.flat_bottom_var = tk.BooleanVar(value=False)
+        self.flat_bottom_var = tk.BooleanVar(value=True)  # Výchozí je rovná podstava
+
+        self.use_artistic_smoothing_var = tk.BooleanVar(value=False)
+        self.artistic_smoothing_strength_var = tk.DoubleVar(value=0.0)
 
     # --- 3. TVORBA UŽIVATELSKÉHO ROZHRANÍ (_create_widgets) ---
-    # Sestavení a rozmístění všech prvků.
-    # Používá pomocné metody (např. _create_file_model_tab) pro udržení přehlednosti kódu.
-    # Princip DRY (Don't Repeat Yourself) pomocí metod jako _create_slider_row pro opakující se prvky.
+    # Hlavní metoda pro sestavení a rozmístění všech hlavních komponent GUI (panely, záložky).
+    # Volá specializované metody pro vytvoření obsahu jednotlivých sekcí.
 
     def _create_widgets(self):
         self.configure(bg="#2e2e2e")
@@ -100,6 +102,8 @@ class ReliefApp(tk.Tk):
         self._create_masking_tab()
         self._configure_styles(style)
 
+    # Vytváří a konfiguruje obsah záložky "File & Model".
+
     def _create_file_model_tab(self):
         tab = ttk.Frame(self.notebook, style="TFrame")
         self.notebook.add(tab, text="File & Model")
@@ -123,19 +127,20 @@ class ReliefApp(tk.Tk):
         export_frame.pack(fill="x", padx=10, pady=10)
         ttk.Checkbutton(
             export_frame,
-            text="Create Cutting Margin (1mm)",
+            text="Generate Flat Bottom",
+            variable=self.flat_bottom_var,
+        ).pack(anchor="w", padx=5)
+        ttk.Checkbutton(
+            export_frame,
+            text="Add Cutting Margin (1mm)",
             variable=self.use_cutting_margin_var,
         ).pack(anchor="w", padx=5)
         ttk.Checkbutton(
             export_frame,
-            text="Export as relief only (no base/walls)",
+            text="Export as relief only (no base)",
             variable=self.export_relief_only_var,
         ).pack(anchor="w", padx=5)
-        ttk.Checkbutton(
-            export_frame,
-            text="Generate Flat Bottom",
-            variable=self.flat_bottom_var,
-        ).pack(anchor="w", padx=5)
+
         self.convert_btn = ttk.Button(
             tab,
             text="Convert to STL",
@@ -150,11 +155,14 @@ class ReliefApp(tk.Tk):
         self.progress_label = ttk.Label(tab, text="")
         self.progress_label.pack(fill="x", padx=10, pady=(0, 10))
 
+    # Vytváří a konfiguruje obsah záložky "Adjustments".
+
     def _create_adjustments_tab(self):
         tab = ttk.Frame(self.notebook, style="TFrame")
         self.notebook.add(tab, text="Adjustments")
+
         photo_frame = ttk.LabelFrame(tab, text="Image Adjustments")
-        photo_frame.pack(fill="x", padx=10, pady=10)
+        photo_frame.pack(fill="x", padx=10, pady=10, anchor="n")
         self._create_slider_row(
             photo_frame, 0, "Contrast", self.contrast_var, 0.5, 3.0, 1.0
         )
@@ -172,13 +180,27 @@ class ReliefApp(tk.Tk):
             self.use_threshold_var,
         )
         self._create_slider_row(
-            photo_frame, 3, "Smoothing", self.smoothing_var, 0, 5, 0.0
+            photo_frame, 3, "Gaussian Smoothing", self.smoothing_var, 0, 10, 0.0
         )
         self._create_slider_row(
             photo_frame, 4, "Noise Reduction", self.noise_reduction_var, 0, 5, 0
         )
+
+        artistic_frame = ttk.LabelFrame(tab, text="Artistic Smoothing (slower)")
+        artistic_frame.pack(fill="x", padx=10, pady=10, anchor="n")
+        self._create_slider_row(
+            artistic_frame,
+            0,
+            "Strength",
+            self.artistic_smoothing_strength_var,
+            0,
+            100,
+            0,
+            self.use_artistic_smoothing_var,
+        )
+
         shape_frame = ttk.LabelFrame(tab, text="Shape Operations")
-        shape_frame.pack(fill="x", padx=10, pady=10)
+        shape_frame.pack(fill="x", padx=10, pady=10, anchor="n")
         self._create_slider_row(
             shape_frame,
             0,
@@ -189,6 +211,7 @@ class ReliefApp(tk.Tk):
             3,
             self.use_stroke_var,
         )
+
         ttk.Label(shape_frame, text="Dilate/Erode:").grid(
             row=1, column=0, sticky="w", padx=5
         )
@@ -212,11 +235,12 @@ class ReliefApp(tk.Tk):
             variable=self.erode_var,
             command=self.trigger_update,
         ).pack(side="left", expand=True, fill="x")
+
         misc_frame = ttk.LabelFrame(tab, text="Output Options")
-        misc_frame.pack(fill="x", padx=10, pady=10)
+        misc_frame.pack(fill="x", padx=10, pady=10, anchor="n")
         ttk.Checkbutton(
             misc_frame,
-            text="Invert Colors (dark is high)",
+            text="Invert Height (light is high)",
             variable=self.invert_colors_var,
             command=self.trigger_update,
         ).pack(anchor="w", padx=5)
@@ -230,6 +254,8 @@ class ReliefApp(tk.Tk):
             text="Save as Binary STL (Recommended)",
             variable=self.binary_format_var,
         ).pack(anchor="w", padx=5)
+
+    # Vytváří a konfiguruje obsah záložky "Masking Tools"
 
     def _create_masking_tab(self):
         tab = ttk.Frame(self.notebook, style="TFrame")
@@ -283,6 +309,8 @@ class ReliefApp(tk.Tk):
             fill="x", padx=10, pady=10
         )
 
+    # Pomocná metoda pro generování řádku s posuvníkem, popiskem a resetovacím tlačítkem.
+
     def _create_slider_row(
         self, parent, row, label, var, from_, to, default_val, check_var=None
     ):
@@ -306,6 +334,8 @@ class ReliefApp(tk.Tk):
             row=row, column=2, padx=(0, 5)
         )
 
+    # Pomocná metoda pro generování řádku s posuvníkem a propojeným textovým vstupem.
+
     def _create_entry_slider_row(self, parent, row, label, var, from_, to):
         ttk.Label(parent, text=label).grid(
             row=row, column=0, sticky="w", padx=5, pady=2
@@ -314,12 +344,19 @@ class ReliefApp(tk.Tk):
         widget_frame.grid(row=row, column=1, columnspan=2, sticky="ew")
         widget_frame.columnconfigure(0, weight=1)
         scale = ttk.Scale(
-            widget_frame, from_=from_, to=to, orient="horizontal", variable=var
+            widget_frame,
+            from_=from_,
+            to=to,
+            orient="horizontal",
+            variable=var,
+            command=self.trigger_update,
         )
         scale.grid(row=0, column=0, sticky="ew")
         entry = ttk.Entry(widget_frame, textvariable=var, width=7)
         entry.grid(row=0, column=1, padx=5)
-        var.trace_add("write", self.trigger_update_from_trace)
+        var.trace_add("write", lambda *args: self.trigger_update())
+
+    # Konfiguruje vizuální styly pro ttk widgety pro sjednocený vzhled.
 
     def _configure_styles(self, style):
         style.configure("TFrame", background="#2e2e2e")
@@ -358,8 +395,7 @@ class ReliefApp(tk.Tk):
         )
 
     # --- 4. ZPRACOVÁNÍ UDÁLOSTÍ (EVENT HANDLING) ---
-    # Metoda _bind_events propojí akce uživatele (klik, pohyb myši) s obslužnými funkcemi (on_press, on_drag).
-    # Metody 'on_...' jsou pasivní funkce, které čekají na spuštění akcí uživatele.
+    # Propojí události (např. kliknutí myší, pohyb kolečka) se specifickými obslužnými metodami (event handlery).
 
     def _bind_events(self):
         self.preview_canvas.bind("<ButtonPress-1>", self.on_press)
@@ -372,6 +408,10 @@ class ReliefApp(tk.Tk):
         self.preview_canvas.bind("<Button-4>", self.on_mouse_wheel)
         self.preview_canvas.bind("<Button-5>", self.on_mouse_wheel)
         self.bind("<Configure>", self.trigger_update)
+
+    # --- 5. LOGIKA APLIKACE A PROPOJENÍ S BACKENDEM ---
+    # Metody v této sekci řídí tok dat a komunikaci mezi GUI a výpočetními moduly.
+    # Otevře dialog pro načtení obrázku, zpracuje ho a inicializuje stav aplikace pro náhled.
 
     def load_image(self):
         path = filedialog.askopenfilename(
@@ -398,19 +438,16 @@ class ReliefApp(tk.Tk):
         except Exception as e:
             messagebox.showerror("Image Error", f"Could not load image: {e}")
 
-    # --- 5. LOGIKA APLIKACE A PROPOJENÍ S BACKENDEM ---
-    # Metoda 'update_and_redraw' je centrální bod pro aktualizaci náhledu obrázku na základě nastavení.
-    # Využívá se "debouncing" (v metodě trigger_update), aby se předešlo zahlcení procesoru při rychlých změnách (např. rychlý pohyb posuvníku).
-    # Konverze na STL běží ve vedlejším vlákně (threading.Thread), aby hlavní okno aplikace během výpočtu nezamrzlo.
-    # Komunikace z vedlejšího vlákna zpět do hlavního (pro aktualizaci GUI) probíhá bezpečně pomocí metody 'self.after()'.
+    # Spouštěč aktualizace s "debouncingem" - zabraňuje zahlcení CPU při rychlých změnách (např. pohyb posuvníku).
+    # Plánuje volání 'update_and_redraw' s malým zpožděním.
 
     def trigger_update(self, *args):
         if self.debounce_timer:
             self.after_cancel(self.debounce_timer)
         self.debounce_timer = self.after(150, self.update_and_redraw)
 
-    def trigger_update_from_trace(self, *args):
-        self.trigger_update()
+    # Hlavní metoda pro aktualizaci. Sesbírá aktuální hodnoty ze všech ovládacích prvků
+    # Zavolá externí funkci 'process_image' pro přepočet náhledu.
 
     def update_and_redraw(self):
         if not self.active_pil_image:
@@ -428,11 +465,16 @@ class ReliefApp(tk.Tk):
             self.noise_reduction_var.get(),
             self.use_stroke_var.get(),
             self.stroke_thickness_var.get(),
+            self.use_artistic_smoothing_var.get(),
+            self.artistic_smoothing_strength_var.get(),
         )
         self.redraw_canvas()
 
+    # Překreslí obsah plátna na základě aktuálně zpracovaného obrázku ('self.processed_pil_image').
+
     def redraw_canvas(self):
-        if not self.active_pil_image:
+
+        if not self.processed_pil_image:
             self.preview_canvas.delete("all")
             return
         canvas_w, canvas_h = (
@@ -441,23 +483,24 @@ class ReliefApp(tk.Tk):
         )
         if canvas_w < 2 or canvas_h < 2:
             return
-        if self.processed_pil_image:
-            visible_img_x1 = int(self.view_offset_x)
-            visible_img_y1 = int(self.view_offset_y)
-            visible_img_x2 = int(self.view_offset_x + canvas_w / self.zoom_level)
-            visible_img_y2 = int(self.view_offset_y + canvas_h / self.zoom_level)
-            try:
-                cropped_img = self.processed_pil_image.crop(
-                    (visible_img_x1, visible_img_y1, visible_img_x2, visible_img_y2)
-                )
-                display_img = cropped_img.resize(
-                    (canvas_w, canvas_h), Image.Resampling.LANCZOS
-                )
-                self.tk_image = ImageTk.PhotoImage(display_img)
-                self.preview_canvas.delete("all")
-                self.preview_canvas.create_image(0, 0, anchor="nw", image=self.tk_image)
-            except Exception:
-                pass
+
+        visible_img_x1 = int(self.view_offset_x)
+        visible_img_y1 = int(self.view_offset_y)
+        visible_img_x2 = int(self.view_offset_x + canvas_w / self.zoom_level)
+        visible_img_y2 = int(self.view_offset_y + canvas_h / self.zoom_level)
+        try:
+            cropped_img = self.processed_pil_image.crop(
+                (visible_img_x1, visible_img_y1, visible_img_x2, visible_img_y2)
+            )
+            display_img = cropped_img.resize(
+                (canvas_w, canvas_h), Image.Resampling.LANCZOS
+            )
+            self.tk_image = ImageTk.PhotoImage(display_img)
+            self.preview_canvas.delete("all")
+            self.preview_canvas.create_image(0, 0, anchor="nw", image=self.tk_image)
+        except Exception:
+            pass
+
         if self.current_selection_points:
             image_points = self._get_final_shape_points()
             if len(image_points) > 1:
@@ -468,7 +511,10 @@ class ReliefApp(tk.Tk):
                     canvas_points_to_draw, outline="cyan", fill="", width=2
                 )
 
+    # Inicializuje proces konverze na STL v samostatném, neblokujícím vlákně.
+
     def start_conversion(self):
+
         if not self.processed_pil_image:
             messagebox.showwarning(
                 "Missing Image", "Please load and process an image first."
@@ -488,7 +534,10 @@ class ReliefApp(tk.Tk):
         thread.daemon = True
         thread.start()
 
+    # Vrací slovník s aktuálními parametry z GUI pro předání do STL generátoru.
+
     def get_params_as_dict(self):
+
         return {
             "model_width_mm": self.model_width_var.get(),
             "base_height": self.base_height_var.get(),
@@ -500,14 +549,18 @@ class ReliefApp(tk.Tk):
             "flat_bottom": self.flat_bottom_var.get(),
         }
 
+    # Metoda běžící ve vedlejším vlákně. Volá 'image_to_stl' a plánuje dokončení v hlavním vlákně.
+
     def run_conversion_thread(self, processed_image, stl_path, params):
+
         update_ui = lambda p: self.after(0, self._update_progress_ui, p)
-
         result = image_to_stl(processed_image, stl_path, params, update_ui)
-
         self.after(0, self.finish_conversion, result, stl_path)
 
+    # Zpracuje výsledek konverze z vedlejšího vlákna a zobrazí úspěch nebo chybu.
+
     def finish_conversion(self, result, stl_path):
+
         if result is True:
             self.progress_label.config(text="Done!")
             messagebox.showinfo("Success", f"Model successfully saved to:\n{stl_path}")
@@ -520,12 +573,16 @@ class ReliefApp(tk.Tk):
         self.convert_btn.config(state="normal")
 
     # --- 6. POMOCNÉ METODY (UTILITY) ---
+    # Sada menších, specializovaných funkcí pro specifické úkoly,
+    # Aktualizace progress baru, přepočty souřadnic a logika pro práci s maskou.
 
     def _update_progress_ui(self, percentage):
+
         self.progress_var.set(percentage)
         self.progress_label.config(text=f"{percentage:.0f}%")
 
     def on_mouse_wheel(self, event):
+
         if not self.original_pil_image:
             return
         zoom_factor = 0.9 if (event.num == 5 or event.delta < 0) else 1.1
@@ -541,6 +598,7 @@ class ReliefApp(tk.Tk):
         self.pan_start_y = event.y
 
     def on_pan_move(self, event):
+
         if not self.original_pil_image:
             return
         dx = (event.x - self.pan_start_x) / self.zoom_level
@@ -552,6 +610,7 @@ class ReliefApp(tk.Tk):
         self.redraw_canvas()
 
     def reset_view(self):
+
         self.zoom_level = 1.0
         self.view_offset_x = 0
         self.view_offset_y = 0
@@ -568,18 +627,21 @@ class ReliefApp(tk.Tk):
         self.redraw_canvas()
 
     def canvas_to_image_coords(self, canvas_x, canvas_y):
+
         return (
             self.view_offset_x + (canvas_x / self.zoom_level),
             self.view_offset_y + (canvas_y / self.zoom_level),
         )
 
     def image_to_canvas_coords(self, img_x, img_y):
+
         return (
             (img_x - self.view_offset_x) * self.zoom_level,
             (img_y - self.view_offset_y) * self.zoom_level,
         )
 
     def on_press(self, event):
+
         if not self.active_pil_image:
             return
         img_coords = self.canvas_to_image_coords(event.x, event.y)
@@ -592,6 +654,7 @@ class ReliefApp(tk.Tk):
         self.apply_mask_btn.config(state="disabled")
 
     def on_drag(self, event):
+
         if not self.is_drawing_shape or not self.current_selection_points:
             return
         self.current_selection_points[-1] = self.canvas_to_image_coords(
@@ -600,6 +663,7 @@ class ReliefApp(tk.Tk):
         self.redraw_canvas()
 
     def on_release(self, event):
+
         if not self.is_drawing_shape:
             return
         if self.selection_mode.get() != "Polygon":
@@ -609,6 +673,7 @@ class ReliefApp(tk.Tk):
         self.redraw_canvas()
 
     def on_mouse_move(self, event):
+
         if not self.is_drawing_shape or not self.current_selection_points:
             return
         mode = self.selection_mode.get()
@@ -619,9 +684,9 @@ class ReliefApp(tk.Tk):
             self.redraw_canvas()
 
     def apply_mask(self):
+
         if not self.active_pil_image:
             return
-
         if len(self.current_selection_points) < 2:
             return
         image_points = self._get_final_shape_points()
@@ -640,6 +705,7 @@ class ReliefApp(tk.Tk):
         self.trigger_update()
 
     def revert_mask(self):
+
         if not self.original_pil_image:
             return
         self.active_pil_image = self.original_pil_image.copy()
@@ -647,23 +713,21 @@ class ReliefApp(tk.Tk):
         self.trigger_update()
 
     def _get_final_shape_points(self):
+
         mode = self.selection_mode.get()
         points = self.current_selection_points
         if not points:
             return []
-
         if mode == "Rectangle" and len(points) >= 2:
             x1, y1 = points[0]
             x2, y2 = points[-1]
             return [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
-
         if mode in ["Hexagon", "Heart"] and len(points) >= 2:
             center_x, center_y = points[0]
             edge_x, edge_y = points[-1]
             dx, dy = edge_x - center_x, edge_y - center_y
             radius, angle_offset = math.sqrt(dx**2 + dy**2), math.atan2(dy, dx)
             final_points = []
-
             if mode == "Hexagon" and radius > 0:
                 for i in range(6):
                     angle = (math.pi / 3 * i) + angle_offset
@@ -690,10 +754,10 @@ class ReliefApp(tk.Tk):
                     )
                     final_points.append((x, y))
             return final_points
-
         return points
 
     def undo_last_point(self):
+
         if self.current_selection_points:
             self.current_selection_points.pop()
             if not self.current_selection_points:
@@ -702,6 +766,7 @@ class ReliefApp(tk.Tk):
             self.redraw_canvas()
 
     def clear_current_selection(self):
+
         self.current_selection_points = []
         self.apply_mask_btn.config(state="disabled")
         self.is_drawing_shape = False
